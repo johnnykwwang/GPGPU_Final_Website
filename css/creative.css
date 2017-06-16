@@ -9,7 +9,7 @@ body {
   width: 100%;
 }
 body {
-  font-family: 'Merriweather', 'Helvetica Neue', Arial, sans-serif;
+  /* font-family: 'Merriweather', 'Helvetica Neue', Arial, sans-serif; */
 }
 hr {
   border-color: #F05F40;
@@ -155,7 +155,7 @@ header {
   background-size: cover;
   -o-background-size: cover;
   background-position: center;
-  background-image: url('../img/header.jpg');
+  background-image: url('../img/header.png');
   text-align: center;
   color: white;
 }
