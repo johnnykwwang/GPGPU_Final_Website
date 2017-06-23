@@ -43,7 +43,19 @@ p {
   margin-bottom: 20px;
 }
 .bg-primary {
+  color: black;
   background-color: #F05F40;
+}
+h2.section-heading-white{
+  color: white;
+  font-weight: bold;
+  font-size: 4rem;
+  /* color: white; */
+}
+header .header-content .header-content-inner p.intro{
+  font-size: 3rem;
+  /* font-weight:bold; */
+  color: #fff;
 }
 .bg-dark {
   background-color: #222222;
@@ -51,6 +63,10 @@ p {
 }
 .text-faded {
   color: rgba(255, 255, 255, 0.7);
+}
+p.text-faded{
+  color: #fff;
+  font-size: 2rem;
 }
 section {
   padding: 100px 0;
@@ -414,3 +430,14 @@ img::-moz-selection {
 body {
   webkit-tap-highlight-color: #222222;
 }
+
+
+
+
+
+
+.panel-title > a{
+  /* font-weight: bold; */
+  font-size: 2rem;
+}
+

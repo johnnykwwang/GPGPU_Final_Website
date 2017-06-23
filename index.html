@@ -53,13 +53,13 @@
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav navbar-right">
                     <li>
-                        <a class="page-scroll" href="#about">About</a>
+                        <a class="page-scroll" href="#about">Techniques</a>
                     </li>
                     <li>
-                        <a class="page-scroll" href="#services">Services</a>
+                        <a class="page-scroll" href="#services">Results and Settings</a>
                     </li>
                     <li>
-                        <a class="page-scroll" href="#portfolio">Portfolio</a>
+                        <a class="page-scroll" href="#conclusion">Conclusion</a>
                     </li>
                     <li>
                         <a class="page-scroll" href="#contact">Contact</a>
@@ -76,8 +76,9 @@
             <div class="header-content-inner">
               <h1 id="homeHeading">GPU-Accelerated<br>MLP Classifier and Regressor</h1>
                 <hr>
-                <p>In the scikit-learn framework, we build GPU-accelerated MLPClassifier and MLPRegressor to have better performance and less computation time.</p>
+                <p class="intro">In the scikit-learn framework, we build GPU-accelerated MLPClassifier and MLPRegressor to have better performance and less computation time.</p>
                 <a href="#about" class="btn btn-primary btn-xl page-scroll">Find Out More</a>
+                <a href="#about" class="btn btn-primary btn-xl page-scroll">View on GitHub</a>
             </div>
         </div>
     </header>
@@ -86,10 +87,10 @@
         <div class="container">
             <div class="row">
                 <div class="col-lg-8 col-lg-offset-2 text-center">
-                    <h2 class="section-heading">Abstract</h2>
+                    <h2 class="section-heading section-heading-white">Techniques</h2>
                     <hr class="light">
                     
-                    <p class="text-faded">Start Bootstrap has everything you need to get your new website up and running in no time! All of the templates and themes on Start Bootstrap are open source, free to download, and easy to use. No strings attached!</p>
+                    <p class="text-faded">GPU is well-known for its powerful parallel computation power, so it is reasonable to offload those large matrix operations to GPU. By carefully inspection of the source code of MLP classifier/regressor, we picked several subroutine and transformed it into CUDA kernels.</p>
                 </div>
             </div>
             <div class="row">
@@ -97,90 +98,127 @@
                   <div class="panel panel-default">
                     <div class="panel-heading" role="tab" id="headingOne">
                       <h4 class="panel-title">
-                        <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-                          Collapsible Group Item #1
-                        </a>
+                        <a role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="true" aria-controls="collapseOne">Offload computation intensive tasks to GPU</a>
                       </h4>
                     </div>
                     <div id="collapseOne" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="headingOne">
                       <div class="panel-body">
-                        <div class="col-lg-6"><pre><code>
-# import matplotlib.pyplot as plt
-from sklearn.datasets import fetch_mldata
-from sklearn.neural_network import MLPClassifier
+                        <div class="col-lg-12">
+                          The following code snippet computes the gradient of loss with respect to coefs and intercept for specified layer. The original sklearn function computes dot product in CPU and applies some scalar operation to input data. We can transform those operations into an element-wise kernel. This significantly improves the performance of the entire program.
+                        </div>
+                        <div class="col-lg-6">
+                          <h4 class="text-center">CPU Version</h4>
+                          <pre><code>
+def _compute_loss_grad(self, layer, n_samples, activations, deltas, coef_grads, intercept_grads):
 
-mnist = fetch_mldata("MNIST original")
+    coef_grads[layer] = safe_sparse_dot(activations[layer].T,
+                                        deltas[layer])
+    coef_grads[layer] += (self.alpha * self.coefs_[layer])
+    coef_grads[layer] /= n_samples
 
-X, y = mnist.data / 255., mnist.target
-X_train, X_test = X[:60000], X[60000:]
-y_train, y_test = y[:60000], y[60000:]
+    intercept_grads[layer] = np.mean(deltas[layer], 0)
 
-
-mlp = MLPClassifier(hidden_layer_sizes=(50), max_iter=10, alpha=1e-4,
-    solver='sgd', verbose=10, tol=1e-4, random_state=1,
-    learning_rate_init=.1)
-
-mlp.fit(X_train, y_train)
-print("Training set score: %f" % mlp.score(X_train, y_train))
-print("Test set score: %f" % mlp.score(X_test, y_test))
-
-# fig, axes = plt.subplots(4, 4)
-
-# vmin, vmax = mlp.coefs_[0].min(), mlp.coefs_[0].max()
-# for coef, ax in zip(mlp.coefs_[0].T, axes.ravel()):
-#     ax.matshow(coef.reshape(28, 28), cmap=plt.cm.gray, vmin=.5 * vmin,
-#                vmax=.5 * vmax)
-#     ax.set_xticks(())
-#     ax.set_yticks(())
-
-# plt.show()
+    return coef_grads, intercept_grads
                         </code></pre></div>
-                        Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS.
+                        <div class="col-lg-6">
+                          <h4 class="text-center">GPU Version</h4>
+                          <pre><code>
+kernel_compute_loss_grad_cuda = cp.ElementwiseKernel(
+    'float64 coefs, float64 alpha, float64 n_samples',
+    'float64 coef_grads',
+    'coef_grads = (coef_grads + alpha * coefs)/ n_samples',
+    'kernel_compute_loss_grad_cuda')
+
+def _compute_loss_grad_cuda(self, layer, n_samples, activations, deltas, coef_grads, intercept_grads):
+
+    cp.dot(activations[layer].T, deltas[layer], out=coef_grads[layer])
+    self.kernel_compute_loss_grad_cuda(self.cuda_coefs_[layer], self.alpha, n_samples,coef_grads[layer])
+    cp.mean(deltas[layer], 0, out=intercept_grads[layer])
+
+    return coef_grads, intercept_grads
+                        </code></pre></div>
                       </div>
                     </div>
                   </div>
                   <div class="panel panel-default">
                     <div class="panel-heading" role="tab" id="headingTwo">
                       <h4 class="panel-title">
-                        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                          Collapsible Group Item #2
+                        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="true" aria-controls="collapseTwo">
+                          In-place operations
                         </a>
                       </h4>
                     </div>
                     <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
                       <div class="panel-body">
-                        Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS.
-                      </div>
+                        <div class="col-lg-12">
+                          Memory operations are expensive on GPU. In Python code you usually do not care about the memory allocation because the Python GC (garbage collection) manages them well. However, memory management becomes a significant issue when you porting the program from CPU to GPU.
+                          <br>
+                          The original sklearn generates lots of intermediate array during the computation of logistic loss function. For CPU version it seems to be okay because we spend lot of time on computation. However, the GPU computes these so fast that we cannot simply ignore the memory allocation cause by those operations. Instead, we transform these operations into an in-place computation without generating any intermediate buffers.
+                        </div>
+                        <div class="col-lg-6">
+                          <h4 class="text-center">CPU Version</h4>
+                          <pre><code>
+def log_loss(y_true, y_prob):
+    y_prob = np.clip(y_prob, 1e-10, 1 - 1e-10)
+    return -np.sum(y_true * np.log(y_prob)) / y_prob.shape[0]
+                        </code></pre>
+                        </div>
+                        <div class="col-lg-6">
+                          <h4 class="text-center">GPU Version</h4>
+                          <pre><code>
+kernel_log_loss = cp.ReductionKernel(
+    'float64 y_true, float64 y_prob, float64 size',
+    'float64 val',
+    'y_true * log( min(max(y_prob,1e-10),1 - 1e-10) ) * -1.0',
+    'a + b',
+    'val = a / size',
+    '0',
+    'kernel_log_loss'
+)
+
+def log_loss_cuda(y_true, y_prob):
+    return kernel_log_loss(y_true, y_prob, y_prob.shape[0])
+                        </code></pre></div>
                     </div>
+                  </div>
                   </div>
                   <div class="panel panel-default">
                     <div class="panel-heading" role="tab" id="headingThree">
                       <h4 class="panel-title">
-                        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                          Collapsible Group Item #3
-                        </a>
+                        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">Custom kernel</a>
                       </h4>
                     </div>
                     <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
                       <div class="panel-body">
-                        Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS.
+                        <div class="col-lg-12">Since sklearn is based on Numpy, it is reasonable to accelerate the performance by simply replace the Numpy routines by those in Cupy which optimized the computation by CUDA. However, not every function can be replaced by Cupy version. The following example computes the L2 regularization term. The original sklearn computes the value by a very Python-style code. However, we cannot find suitable candidate in Cupy. Instead of simply replacing Numpy with Cupy which introduces significant overhead, we write a custom kernel to handle the task.</div>
+                        <div class="col-lg-6">
+                          <h4 class="text-center">CPU Version</h4>
+                          <pre><code>
+# Add L2 regularization term to loss
+values = np.sum(
+    np.array([np.dot(s.ravel(), s.ravel()) for s in self.coefs_]))
+                        </code></pre>
+                        </div>
+                        <div class="col-lg-6">
+                          <h4 class="text-center">GPU Version</h4>
+                          <pre><code>
+kernel_l2_regularization = cp.ReductionKernel(
+    'T x',
+    'T y',
+    'x*x',
+    'a + b',
+    'y = a',
+    '0',
+    'kernel_l2_regularization'
+)
+
+for s in self.cuda_coefs_:
+    values += kernel_l2_regularization(s.ravel())
+                        </code></pre></div>
                       </div>
                     </div>
                   </div>
                 </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
         </div>
     </section>
 
@@ -188,166 +226,94 @@ print("Test set score: %f" % mlp.score(X_test, y_test))
         <div class="container">
             <div class="row">
                 <div class="col-lg-12 text-center">
-                    <h2 class="section-heading">At Your Service</h2>
+                    <h2 class="section-heading">Results</h2>
                     <hr class="primary">
                 </div>
             </div>
         </div>
         <div class="container">
             <div class="row">
-                <div class="col-lg-3 col-md-6 text-center">
-                    <div class="service-box">
-                        <i class="fa fa-4x fa-diamond text-primary sr-icons"></i>
-                        <h3>Sturdy Templates</h3>
-                        <p class="text-muted">Our templates are updated regularly so they don't break.</p>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 text-center">
-                    <div class="service-box">
-                        <i class="fa fa-4x fa-paper-plane text-primary sr-icons"></i>
-                        <h3>Ready to Ship</h3>
-                        <p class="text-muted">You can use this theme as is, or you can make changes!</p>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 text-center">
-                    <div class="service-box">
-                        <i class="fa fa-4x fa-newspaper-o text-primary sr-icons"></i>
-                        <h3>Up to Date</h3>
-                        <p class="text-muted">We update dependencies to keep things fresh.</p>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 text-center">
-                    <div class="service-box">
-                        <i class="fa fa-4x fa-heart text-primary sr-icons"></i>
-                        <h3>Made with Love</h3>
-                        <p class="text-muted">You have to make your websites with love these days!</p>
-                    </div>
-                </div>
+              <div class="col-lg-6">
+                <iframe src="chart_classifier.html" height="400" style="width: 100%; border: none;"></iframe>
+              </div>
+              <div class="col-lg-6">
+                <iframe src="chart_regressor.html" height="400" style="width: 100%; border: none;"></iframe>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-lg-6">
+                <iframe src="chart_classifier_by_batch.html" height="400" style="width: 100%; border: none;"></iframe>
+              </div>
+              <div class="col-lg-6">
+                <iframe src="chart_regressor_by_batch.html" height="400" style="width: 100%; border: none;"></iframe>
+              </div>
             </div>
         </div>
     </section>
 
-    <section class="no-padding" id="portfolio">
-        <div class="container-fluid">
-            <div class="row no-gutter popup-gallery">
-                <div class="col-lg-4 col-sm-6">
-                    <a href="img/portfolio/fullsize/1.jpg" class="portfolio-box">
-                        <img src="img/portfolio/thumbnails/1.jpg" class="img-responsive" alt="">
-                        <div class="portfolio-box-caption">
-                            <div class="portfolio-box-caption-content">
-                                <div class="project-category text-faded">
-                                    Category
-                                </div>
-                                <div class="project-name">
-                                    Project Name
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-lg-4 col-sm-6">
-                    <a href="img/portfolio/fullsize/2.jpg" class="portfolio-box">
-                        <img src="img/portfolio/thumbnails/2.jpg" class="img-responsive" alt="">
-                        <div class="portfolio-box-caption">
-                            <div class="portfolio-box-caption-content">
-                                <div class="project-category text-faded">
-                                    Category
-                                </div>
-                                <div class="project-name">
-                                    Project Name
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-lg-4 col-sm-6">
-                    <a href="img/portfolio/fullsize/3.jpg" class="portfolio-box">
-                        <img src="img/portfolio/thumbnails/3.jpg" class="img-responsive" alt="">
-                        <div class="portfolio-box-caption">
-                            <div class="portfolio-box-caption-content">
-                                <div class="project-category text-faded">
-                                    Category
-                                </div>
-                                <div class="project-name">
-                                    Project Name
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-lg-4 col-sm-6">
-                    <a href="img/portfolio/fullsize/4.jpg" class="portfolio-box">
-                        <img src="img/portfolio/thumbnails/4.jpg" class="img-responsive" alt="">
-                        <div class="portfolio-box-caption">
-                            <div class="portfolio-box-caption-content">
-                                <div class="project-category text-faded">
-                                    Category
-                                </div>
-                                <div class="project-name">
-                                    Project Name
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-lg-4 col-sm-6">
-                    <a href="img/portfolio/fullsize/5.jpg" class="portfolio-box">
-                        <img src="img/portfolio/thumbnails/5.jpg" class="img-responsive" alt="">
-                        <div class="portfolio-box-caption">
-                            <div class="portfolio-box-caption-content">
-                                <div class="project-category text-faded">
-                                    Category
-                                </div>
-                                <div class="project-name">
-                                    Project Name
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-lg-4 col-sm-6">
-                    <a href="img/portfolio/fullsize/6.jpg" class="portfolio-box">
-                        <img src="img/portfolio/thumbnails/6.jpg" class="img-responsive" alt="">
-                        <div class="portfolio-box-caption">
-                            <div class="portfolio-box-caption-content">
-                                <div class="project-category text-faded">
-                                    Category
-                                </div>
-                                <div class="project-name">
-                                    Project Name
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </section>
 
     <aside class="bg-dark">
         <div class="container text-center">
             <div class="call-to-action">
-                <h2>Free Download at Start Bootstrap!</h2>
-                <a href="http://startbootstrap.com/template-overviews/creative/" class="btn btn-default btn-xl sr-button">Download Now!</a>
+                <h2>Testing Environment and Scenario</h2>
             </div>
+            <div class='row'>
+              <div class="col-lg-2 col-lg-offset-2">
+                Machine:<br>
+                <strong>AWS g2.2xLarge</strong>
+              </div>
+              <div class="col-lg-2">
+                CPU:<br>
+                <strong>Intel Xeon E5-2670 (Sandy Bridge)</strong>
+              </div>
+              <div class="col-lg-2">
+                GPU:<br>
+                <strong>GRID K340<br>( 1,536 CUDA cores / 4GB video memory ) </strong>
+              </div>
+              <div class="col-lg-2">
+                Dataset:<br>
+                <strong>MNIST HandWriting Data && Boston Housing Dataset</strong>
+              </div>
+            </div>
+            <hr>
+            <div class='row'>
+              <div class="col-lg-6 col-lg-offset-3">
+                We hope this setting is close to a normal PC, in fact this setting is very old ( around 2013~ ), and this setting is close to a normal PC with i5 processor and a GTX960 graphics card.
+              </div>
         </div>
     </aside>
 
+    <section id="conclusion" class='bg-primary' >
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 text-center">
+                    <h2 class="section-heading section-heading-white">Conclusion</h2>
+                    <hr class="light">
+                    <p class="text-faded">
+                      We completed a variety settings of experiments, and discovered that with a dataset larger than some size, GPU is capable of outperforming CPU when executing both MLP algorithms, even when it's a normal performance GPU. <br>
+                      Our GPU version have up-to <strong>5 times</strong> faster in MLPRegressor, and up-to <strong>33%</strong> speedup in MLPClassifier.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
     <section id="contact">
         <div class="container">
             <div class="row">
                 <div class="col-lg-8 col-lg-offset-2 text-center">
-                    <h2 class="section-heading">Let's Get In Touch!</h2>
+                    <h2 class="section-heading">Authors</h2>
                     <hr class="primary">
-                    <p>Ready to start your next project with us? That's great! Give us a call or send us an email and we will get back to you as soon as possible!</p>
                 </div>
-                <div class="col-lg-4 col-lg-offset-2 text-center">
-                    <i class="fa fa-phone fa-3x sr-contact"></i>
-                    <p>123-456-6789</p>
+            </div>
+            <div class="row">
+                <div class="col-lg-2 col-lg-offset-3 text-center">
+                    <h3>Kuan-Wen Wang 王冠文</h3>
                 </div>
-                <div class="col-lg-4 text-center">
-                    <i class="fa fa-envelope-o fa-3x sr-contact"></i>
-                    <p><a href="mailto:your-email@your-domain.com">feedback@startbootstrap.com</a></p>
+                <div class="col-lg-2  text-center">
+                    <h3>Henry Tseng 曾亮齊</h3>
+                </div>
+                <div class="col-lg-2  text-center">
+                    <h3>YC Lee</h3>
                 </div>
             </div>
         </div>
