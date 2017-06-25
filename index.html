@@ -78,7 +78,7 @@
                 <hr>
                 <p class="intro">In the scikit-learn framework, we build GPU-accelerated MLPClassifier and MLPRegressor to have better performance and less computation time.</p>
                 <a href="#about" class="btn btn-primary btn-xl page-scroll">Find Out More</a>
-                <a href="#about" class="btn btn-primary btn-xl page-scroll">View on GitHub</a>
+                <a href="https://github.com/johnnykwwang/GPGPU_Final_Python_CUDA" class="btn btn-primary btn-xl page-scroll">View on GitHub</a>
             </div>
         </div>
     </header>
@@ -226,26 +226,75 @@ for s in self.cuda_coefs_:
         <div class="container">
             <div class="row">
                 <div class="col-lg-12 text-center">
-                    <h2 class="section-heading">Results</h2>
+                    <h2 class="section-heading">Test Results</h2>
                     <hr class="primary">
                 </div>
             </div>
         </div>
         <div class="container">
             <div class="row">
-              <div class="col-lg-6">
-                <iframe src="chart_classifier.html" height="400" style="width: 100%; border: none;"></iframe>
-              </div>
-              <div class="col-lg-6">
+              <div class="col-lg-8">
+                <h3><strong>MLPRegressor Acceleration - # of Neurons</strong></h3>
                 <iframe src="chart_regressor.html" height="400" style="width: 100%; border: none;"></iframe>
               </div>
+              <div class="col-lg-4">
+                <strong>Controlled Variables</strong><br>
+                - iteration：50<br>
+                - batch size：Dataset.shape[0]<br>
+                <strong>Independent Variables</strong><br>
+                - Number of neurons in hidden layer<br>
+                <strong>Summary</strong><br>
+                <p>In the usage of MLP algorithms, often times there are lots of features in the input dataset.  To get better model, we usually increase the number of neurons.  This makes the number calculation in MLP algorithms increase largely ( for example in the propagation part).  We can compute these calculations in a parallel manner, so we use GPU to do for example the propagation.<br>
+                In the chart we can see that when number of neurons increase, the benefit of GPU-acceleration rises.</p>
+              </div>
             </div>
+            <hr>
             <div class="row">
-              <div class="col-lg-6">
+              <div class="col-lg-8">
+                <h3><strong>MLPRegressor Acceleration - Batch Size</strong></h3>
+                <iframe src="chart_regressor_by_batch.html" height="400" style="width: 100%; border: none;"></iframe>
+              </div>
+              <div class="col-lg-4">
+                <strong>Controlled Variables</strong><br>
+                - iteration：50<br>
+                - Number of neurons in hidden layer: (300,)<br>
+                <strong>Independent Variables</strong><br>
+                - Batch Size<br>
+                <strong>Summary</strong><br>
+                <p>Batch size is another factor that affects performance and score of a model.  Since sklearn default uses stochastic algorithm to learn, training data will be cut into batches of small data.  Each batch training is dependent, we need to wait for one another batch to complete.  But at 1 batch the training process is parallel-able.  So if we increase the size of batch, GPU-acceleration's benefit rises.  But the score may also decrease.  Thus finding an optimal batch size is very important. </p>
+              </div>
+            </div>
+            <hr>
+            <div class="row">
+              <div class="col-lg-8 ">
+                <h3><strong>MLPClassifier Acceleration - # of Neurons</strong></h3>
+                <iframe src="chart_classifier.html" height="400" style="width: 100%; border: none;"></iframe>
+              </div>
+              <div class="col-lg-4">
+                <strong>Controlled Variables</strong><br>
+                - iteration：50<br>
+                - Batch Size: 200<br>
+                <strong>Independent Variables</strong><br>
+                - Number of neurons in hidden layer<br>
+                <strong>Summary</strong><br>
+                <p>We also perform similar GPU-acceleration on MLPClassifier.  GPU's acceleration ratio rises when the number of neuron in hidden layer rise.  It's worth noting that if the number of neurons are too low, GPU's own overhead of transferring data and instructions might ruin the benefit of acceleration, thus lower than CPU version.</p>
+              </div>
+            </div>
+
+            <hr>
+            <div class="row">
+              <div class="col-lg-8">
+                <h3><strong>MLPClassifier Acceleration - Batch Size</strong></h3>
                 <iframe src="chart_classifier_by_batch.html" height="400" style="width: 100%; border: none;"></iframe>
               </div>
-              <div class="col-lg-6">
-                <iframe src="chart_regressor_by_batch.html" height="400" style="width: 100%; border: none;"></iframe>
+              <div class="col-lg-4">
+                <strong>Controlled Variables</strong><br>
+                - iteration：50<br>
+                - Number of neurons in hidden layer: (300,)<br>
+                <strong>Independent Variables</strong><br>
+                - Batch Size<br>
+                <strong>Summary</strong><br>
+                <p>We also perform batch size experiement, in this dataset and settings the batch size does not largely affect the speed up.</p>
               </div>
             </div>
         </div>
