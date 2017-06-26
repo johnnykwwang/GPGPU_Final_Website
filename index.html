@@ -83,6 +83,22 @@
         </div>
     </header>
 
+    <section class="" id="overview">
+        <div class="container">
+            <h2 class="section-heading section-heading-white text-center" style="color:#000" >Overview of Neuron Network & MLP</h2>
+            <div class="row">
+              <div class="col-lg-6 text-center">
+                <h3>MLP Classifier</h3>
+              <img src="https://www.researchgate.net/publication/258397151/figure/fig2/AS:322821784915981@1453978119856/Structure-of-MLP-classifier-for-localization.png" width="100%">
+              </div>
+              <div class="col-lg-6 text-center">
+                <h3>MLP Classifier</h3>
+              <img src="http://scikit-learn.org/stable/_images/multilayerperceptron_network.png" width="100%">
+              </div>
+            </div>
+        </div>
+    </section>
+
     <section class="bg-primary" id="about">
         <div class="container">
             <div class="row">
@@ -240,6 +256,7 @@ for s in self.cuda_coefs_:
                 <strong>GRID K340<br>( 1,536 CUDA cores / 4GB video memory ) </strong>
               </div>
             </div>
+            <hr>
             <div class='row'>
               <div class="col-lg-3 col-lg-offset-3">
                 <strong>Regressor Dataset:</strong><br>
@@ -257,7 +274,8 @@ for s in self.cuda_coefs_:
             <hr>
             <div class='row'>
               <div class="col-lg-6 col-lg-offset-3">
-                We hope this setting is close to a normal PC, in fact this setting is very old ( around 2013~ ), and this setting is close to a normal PC with i5 processor and a GTX960 graphics card.
+                <p>We hope this setting is close to a normal PC, in fact this setting is very old ( around 2013~ ). Our setting is close to a normal PC with i5 processor and a GTX960 graphics card.</p>
+                <p>Our GPU on AWS is a downclocked GK104 (797 MHz), 1/4 the speed of TitanX , 2.7x slower of GTX 980.</p>
               </div>
         </div>
     </aside>
